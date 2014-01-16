@@ -1,0 +1,1 @@
+g++ -Wall -D__WINDOWS_MM__ -o e IRDemo.cpp wiimote.cpp -lhid -lsetupapi
