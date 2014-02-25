@@ -17,7 +17,7 @@
 
 using namespace std;
 
-void playmidi(RtMidiOut* midiout, int note){
+void midiOn(RtMidiOut* midiout, int note){
 		// Send out a series of MIDI messages.
 		std::vector<unsigned char> message;
 		  // Program change: 192, 5
@@ -30,8 +30,16 @@ void playmidi(RtMidiOut* midiout, int note){
 		  message[1] = note;
 		  message[2] = 90;
 		  midiout->sendMessage( &message );
+		 
+}
 
-		  SLEEP( 500 ); // Platform-dependent ... see example in tests directory.
+void midiOff(RtMidiOut* midiout, int note){
+		// Send out a series of MIDI messages.
+		std::vector<unsigned char> message;
+		  // Program change: 192, 5
+		  message.push_back( 192 );
+		  message.push_back( 5 );
+		  midiout->sendMessage( &message );
 
 		  // Note Off: 128, 64, 40
 		  message[0] = 128;
@@ -70,8 +78,6 @@ if(!SetCommState(hSerial, &dcbSerialParams)){
 char szBuff[1 + 1] = {0}; // First 1 for number of bytes, not sure about the second 1
 DWORD dwBytesRead = 0;
 
-char maxVal = '0';
-
 
 RtMidiOut *midiout = new RtMidiOut();
 
@@ -93,34 +99,30 @@ while(1){
 	}
 
 	cout << szBuff << endl; // print read data
-	
-	if(szBuff[0] > maxVal) maxVal = szBuff[0];
-	
+
 	if(szBuff[0] == '0'){
-		if(maxVal == '1'){
-			playmidi(midiout, 52);
-			cout << "note 1" << endl;
-		}
-		if(maxVal == '2'){
-			playmidi(midiout, 50);
-			cout << "note 2" << endl;
-		}
-		if(maxVal == '3'){
-			playmidi(midiout, 48);
-			cout << "note 3" << endl;
-		}
-		
-		maxVal = '0';
+		midiOff(midiout, 52);
+		midiOff(midiout, 50);
+		midiOff(midiout, 48);
 	}
-
-	
-	
-	
-	if (szBuff[0] == '1'){
 		
-		
+	if(szBuff[0] == '4'){
+		midiOff(midiout, 52);
+		midiOff(midiout, 50);
+		midiOn(midiout, 48);
 	}
-
+	
+	if(szBuff[0] == '2'){
+		midiOff(midiout, 48);
+		midiOff(midiout, 52);
+		midiOn(midiout, 50);
+	}
+	if(szBuff[0] == '6'){
+		midiOff(midiout, 48);
+		midiOff(midiout, 50);
+		midiOn(midiout, 52);
+	}
+	
 
 }
 CloseHandle(hSerial);
