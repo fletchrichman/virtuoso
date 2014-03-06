@@ -100,6 +100,31 @@ void midiOff(RtMidiOut* midiout, int note){
 		 
 }
 
+void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
+	int index_min = 0;
+	int index_max = 0;
+	for(int i = 1; i < 4; i++){
+		if(dots[i].bVisible){
+			if(dots[i].X < dots[index_min].X)
+				index_min = i;
+			if(dots[i].X > dots[index_max].X)
+				index_max = i;	
+		}				
+	}
+
+	int row = 0;
+	int col = 0;
+	
+	row = dots[index_max].Y > 0.5 ? 0 : 1;
+	col = dots[index_max].X < 0.5 ? 0 : 1;
+	quads[0] = 2*row+col;
+	
+	row = dots[index_min].Y > 0.5 ? 0 : 1;
+	col = dots[index_min].X < 0.5 ? 0 : 1;
+	quads[1] = 2*row+col; // Left hand quad, assume most left IR is left hand
+}
+
+
 int _tmain ()
 	{
 	system("cls");
@@ -194,8 +219,10 @@ reconnect:
 
 	COORD cursor_pos = { 0, 6 };
 
-	// print the button event instructions:
 
+	/////////////// Wiimote Variables ///////////////
+	int quads[2];
+	
 	// display the wiimote state data until 'Home' is pressed:
 	while(!remote.Button.Home()){ // && !GetAsyncKeyState(VK_ESCAPE))
 		// IMPORTANT: the wiimote state needs to be refreshed each pass
@@ -259,27 +286,37 @@ reconnect:
 				if(dot.bVisible) WHITE;
 			}
 
-			_tprintf(_T("  X %.3f Y %.3f\n"), 133.9*(dot.X-0.470),  88.7*(dot.Y-0.575)); // Changed stuff here!
+			//_tprintf(_T("  X %.3f Y %.3f\n"), 133.9*(dot.X-0.470),  88.7*(dot.Y-0.575)); // Changed stuff here!
+			_tprintf(_T("  X %.3f Y %.3f\n"), dot.X, dot.Y); 
 			
 			if(index < 3)
 				_tprintf(_T("                        "));
 		}
-			
 		BRIGHT_WHITE;
 			
-			
+		determineQuadrant(remote.IR.Dot, quads);
+		
+		cout << quads[0] << endl;
+		cout << quads[1] << endl;
 			
 			
 		if(!ReadFile(hSerial, szBuff, 1, &dwBytesRead, NULL)){ 
 			//cout << "Can't read" << endl;
 		}
 
-		cout << szBuff << endl; // print read data
+		//cout << szBuff << endl; // print read data
 
 		if(szBuff[0] == '1'){
-			midiOff(midiout, 52);
-			midiOff(midiout, 50);
-			midiOff(midiout, 48);
+			if (quads[0] == 1){
+				midiOff(midiout, 52);
+				midiOff(midiout, 50);
+				midiOff(midiout, 48);
+			}
+			if (quads[0] == 2){
+				midiOff(midiout, 48);
+				midiOff(midiout, 52);
+				midiOn(midiout, 50);
+			}
 		}
 			
 		if(szBuff[0] == '4'){
@@ -289,9 +326,9 @@ reconnect:
 		}
 		
 		if(szBuff[0] == '2'){
-			midiOff(midiout, 48);
-			midiOff(midiout, 52);
-			midiOn(midiout, 50);
+			//midiOff(midiout, 48);
+			//midiOff(midiout, 52);
+			//midiOn(midiout, 50);
 		}
 		if(szBuff[0] == '6'){
 			midiOff(midiout, 48);
