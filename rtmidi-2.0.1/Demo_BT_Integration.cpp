@@ -125,14 +125,24 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
 }
 
 void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout){
+	system("cls");
 	int gridsize = 2;
+	cout << fingerState << endl;
 	if (fingerState > 0){
+		fingerState = fingerState/10;
+		cout << "POS  " << fingerState << endl;
+		cout << (fingerState-1)*gridsize+(quad-1) << endl;
 		midiOn( midiout, (fingerState-1)*gridsize+(quad-1) ); 
 	}
 	else if (fingerState < 0){
-		for (int i = 0; i < gridsize; i++){
-			midiOff( midiout, (fingerState-1)*gridsize+(i-1) ) ;
-		}	
+		cout << "NEG                    " << fingerState << endl;
+		int absFinger = abs(fingerState);
+		for (int i = 1; i <= gridsize; i++){
+
+			cout << "\t" << (absFinger-1)*gridsize+(i-1);
+			midiOff( midiout, (absFinger-1)*gridsize+(i-1) ) ;
+		}
+		cout << endl;
 	}
 }
 
@@ -168,7 +178,7 @@ int _tmain ()
 	 cout << "Can't set state" << endl;
 	}
 
-	char szBuff[1 + 1] = {0}; // Not sure about the second 1
+	char szBuff[2 + 1] = {0}; // Not sure about the second 1
 	DWORD dwBytesRead = 0;
 
 	//////////////////////////////////////////
@@ -211,7 +221,7 @@ int _tmain ()
 													   MOTIONPLUS_CHANGED);
 reconnect:
 	COORD pos = { 0, 6 };
-	SetConsoleCursorPosition(console, pos);
+	//SetConsoleCursorPosition(console, pos);
 
 	// try to connect the first available wiimote in the system
 	//  (available means 'installed, and currently Bluetooth-connected'):
@@ -244,7 +254,7 @@ reconnect:
 			Sleep(1); // // don't hog the CPU if nothing changed
 
 		cursor_pos.Y = 8;
-		SetConsoleCursorPosition(console, cursor_pos);
+		//SetConsoleCursorPosition(console, cursor_pos);
 
 		// did we loose the connection?
 		if(remote.ConnectionLost()){
@@ -310,18 +320,22 @@ reconnect:
 			
 		determineQuadrant(remote.IR.Dot, quads);
 		
-		cout << quads[0] << endl;
-		cout << quads[1] << endl;
+		//cout << quads[0] << endl;
+		//cout << quads[1] << endl;
 			
 			
-		if(!ReadFile(hSerial, szBuff, 1, &dwBytesRead, NULL)){ 
-			//cout << "Can't read" << endl;
+		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
+			szBuff[0] = '0';
+			szBuff[1] = '0';
+			cout << "Can't read" << endl;
 		}
 
 		//cout << szBuff << endl; // print read data
 
-		fingerState = szBuff[0];
+		fingerState = atoi(szBuff);
 		sendMIDISignal(fingerState, quads[0], midiout);
+		szBuff[0] = '0';
+		szBuff[1] = '0';
   	}
 
 
