@@ -126,12 +126,12 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
 
 void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout){
 	int gridsize = 2;
-	if fingerState > 0{
+	if (fingerState > 0){
 		midiOn( midiout, (fingerState-1)*gridsize+(quad-1) ); 
 	}
-	else if fingerState < 0{
-		for int i = 0, i < gridsize, i++){
-			midiOff( midiout, (fingerState-1)*gridsize+(i-1);
+	else if (fingerState < 0){
+		for (int i = 0; i < gridsize; i++){
+			midiOff( midiout, (fingerState-1)*gridsize+(i-1) ) ;
 		}	
 	}
 }
