@@ -78,7 +78,7 @@ void midiOn(RtMidiOut* midiout, int note){
 		  // Note On: 144, note, 90
 		  message[0] = 144;
 		  message[1] = note;
-		  message[2] = 90;
+		  message[2] = 127;
 		  midiout->sendMessage( &message );
 		 
 }
@@ -124,25 +124,25 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
 	quads[1] = 2*row+col; // Left hand quad, assume most left IR is left hand
 }
 
-void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout){
-	system("cls");
+void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout, int offset){
+	//system("cls");
 	int gridsize = 2;
-	cout << fingerState << endl;
+	//cout << fingerState << endl;
 	if (fingerState > 0){
 		fingerState = fingerState/10;
-		cout << "POS  " << fingerState << endl;
-		cout << (fingerState-1)*gridsize+(quad-1) << endl;
-		midiOn( midiout, (fingerState-1)*gridsize+(quad-1) ); 
+		//cout << "POS  " << fingerState << endl;
+		//cout << (fingerState-1)*gridsize+(quad-1) << endl;
+		midiOn( midiout, (fingerState-1)*gridsize+(quad-1) + offset); 
 	}
 	else if (fingerState < 0){
-		cout << "NEG                    " << fingerState << endl;
+		//cout << "NEG                    " << fingerState << endl;
 		int absFinger = abs(fingerState);
 		for (int i = 1; i <= gridsize; i++){
 
-			cout << "\t" << (absFinger-1)*gridsize+(i-1);
-			midiOff( midiout, (absFinger-1)*gridsize+(i-1) ) ;
+			//cout << "\t" << (absFinger-1)*gridsize+(i-1);
+			midiOff( midiout, (absFinger-1)*gridsize+(i-1) + offset) ;
 		}
-		cout << endl;
+		//cout << endl;
 	}
 }
 
@@ -333,7 +333,7 @@ reconnect:
 		//cout << szBuff << endl; // print read data
 
 		fingerState = atoi(szBuff);
-		sendMIDISignal(fingerState, quads[0], midiout);
+		sendMIDISignal(fingerState, quads[0], midiout, 40);
 		szBuff[0] = '0';
 		szBuff[1] = '0';
   	}
