@@ -75,7 +75,7 @@ void midiOn(RtMidiOut* midiout, int note){
 		  message.push_back( 5 );
 		  midiout->sendMessage( &message );
 
-		  // Note On: 144, 64, 90
+		  // Note On: 144, note, 90
 		  message[0] = 144;
 		  message[1] = note;
 		  message[2] = 90;
@@ -124,6 +124,17 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
 	quads[1] = 2*row+col; // Left hand quad, assume most left IR is left hand
 }
 
+void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout){
+	int gridsize = 2;
+	if fingerState > 0{
+		midiOn( midiout, (fingerState-1)*gridsize+(quad-1) ); 
+	}
+	else if fingerState < 0{
+		for int i = 0, i < gridsize, i++){
+			midiOff( midiout, (fingerState-1)*gridsize+(i-1);
+		}	
+	}
+}
 
 int _tmain ()
 	{
@@ -218,7 +229,10 @@ reconnect:
 	BRIGHT_CYAN; _tprintf(_T("\b\b\b\b... connected!"));
 
 	COORD cursor_pos = { 0, 6 };
-
+	
+	
+	/////////////// MIDI Variables ///////////////
+	int fingerState;
 
 	/////////////// Wiimote Variables ///////////////
 	int quads[2];
@@ -306,35 +320,8 @@ reconnect:
 
 		//cout << szBuff << endl; // print read data
 
-		if(szBuff[0] == '1'){
-			if (quads[0] == 1){
-				midiOff(midiout, 52);
-				midiOff(midiout, 50);
-				midiOff(midiout, 48);
-			}
-			if (quads[0] == 2){
-				midiOff(midiout, 48);
-				midiOff(midiout, 52);
-				midiOn(midiout, 50);
-			}
-		}
-			
-		if(szBuff[0] == '4'){
-			midiOff(midiout, 52);
-			midiOff(midiout, 50);
-			midiOn(midiout, 48);
-		}
-		
-		if(szBuff[0] == '2'){
-			//midiOff(midiout, 48);
-			//midiOff(midiout, 52);
-			//midiOn(midiout, 50);
-		}
-		if(szBuff[0] == '6'){
-			midiOff(midiout, 48);
-			midiOff(midiout, 50);
-			midiOn(midiout, 52);
-		}
+		fingerState = szBuff[0];
+		sendMIDISignal(fingerState, quads[0], midiout);
   	}
 
 
