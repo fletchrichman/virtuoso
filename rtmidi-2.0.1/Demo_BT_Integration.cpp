@@ -1,8 +1,8 @@
-
 #include "Demo.h"
 #include "wiimote.h"
 #include <mmsystem.h>	// for timeGetTime
 #include <stdio.h>
+#include <math.h>
 
 #include <windows.h>
 #include <iostream>
@@ -100,28 +100,89 @@ void midiOff(RtMidiOut* midiout, int note){
 		 
 }
 
-void determineQuadrant(wiimote_state::ir::dot* dots, int* quads){
-	int index_min = 0;
-	int index_max = 0;
-	for(int i = 1; i < 4; i++){
+void determineQuadrant(wiimote_state::ir::dot* dots, int* quads, float positions[][2]){
+	int index_Xmax; // Left hand
+	int index_Xmin; // Right hand
+
+	int i; // Keep in scope of function
+	float thresholdC = 0.2; // "Radius" of change
+	float thresholdD = 0.1; // "Radius" of degeneracy, hands must be this far away
+	
+	
+	for(i = 0; i < 4; i++){ // Find first visible dot
 		if(dots[i].bVisible){
-			if(dots[i].X < dots[index_min].X)
-				index_min = i;
-			if(dots[i].X > dots[index_max].X)
-				index_max = i;	
+			index_Xmin = i;
+			index_Xmax = i;			
+			break;
+		}
+	}
+	
+	if(i == 4) return; // No visible dots
+	
+	for(i; i < 4; i++){ // Continue through dots and find most right/left visible dots
+		if(dots[i].bVisible){
+			if(dots[i].X < dots[index_Xmin].X)
+				index_Xmin = i;
+			if(dots[i].X > dots[index_Xmax].X)
+				index_Xmax = i;	
 		}				
 	}
 
 	int row = 0;
 	int col = 0;
 	
-	row = dots[index_max].Y > 0.5 ? 0 : 1;
-	col = dots[index_max].X < 0.5 ? 0 : 1;
-	quads[0] = 2*row+col;
+	if(index_Xmax == index_Xmin){ // Only saw one dot (or multiple dots at exact same X), only update closest hand
+		if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y)){ // Left hand closer
+			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update left hand
+			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
+			quads[0] = 2*row+col; 
+			positions[0][0] = dots[index_Xmax].X;
+			positions[0][1] = dots[index_Xmax].Y;
+		}
+		else{ // Right hand closer
+			row = dots[index_Xmin].Y > 0.5 ? 0 : 1; // Only update right hand
+			col = dots[index_Xmin].X < 0.5 ? 0 : 1;
+			quads[1] = 2*row+col; 
+			positions[1][0] = dots[index_Xmin].X;
+			positions[1][1] = dots[index_Xmin].Y;
+		}
+		return;
+	}
 	
-	row = dots[index_min].Y > 0.5 ? 0 : 1;
-	col = dots[index_min].X < 0.5 ? 0 : 1;
-	quads[1] = 2*row+col; // Left hand quad, assume most left IR is left hand
+	if(fabs(dots[index_Xmax].X - dots[index_Xmin].X) + fabs(dots[index_Xmax].Y - dots[index_Xmin].Y) < thresholdD){ // Hands are very close together
+		if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y)){ // Left hand closer to maxX LED than right hand to minX LED
+			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update left hand
+			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
+			quads[0] = 2*row+col; 
+			positions[0][0] = dots[index_Xmax].X;
+			positions[0][1] = dots[index_Xmax].Y;
+		}
+		else{ // Right hand closer to minX LED
+			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update right hand
+			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
+			quads[1] = 2*row+col; 
+			positions[1][0] = dots[index_Xmin].X;
+			positions[1][1] = dots[index_Xmin].Y;
+		}
+		return;
+	}
+	
+	
+	if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < thresholdC){ // 1-Norm under a value, this is the correct dot for left hand
+		row = dots[index_Xmax].Y > 0.5 ? 0 : 1;
+		col = dots[index_Xmax].X < 0.5 ? 0 : 1;
+		quads[0] = 2*row+col; 
+		positions[0][0] = dots[index_Xmax].X;
+		positions[0][1] = dots[index_Xmax].Y;
+	}
+	
+	if(fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y) < thresholdC){ // 1-Norm under a value, this is the correct dot for right hand
+		row = dots[index_Xmin].Y > 0.5 ? 0 : 1;
+		col = dots[index_Xmin].X < 0.5 ? 0 : 1;
+		quads[1] = 2*row+col; 
+		positions[1][0] = dots[index_Xmin].X;
+		positions[1][1] = dots[index_Xmin].Y;	
+	}	
 }
 
 void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout, int offset){
@@ -154,7 +215,7 @@ int _tmain ()
 	
 	//////////////////SETUP BLUETOOTH//////////
 	
-	HANDLE hSerial = CreateFile("COM8", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
+	HANDLE hSerial = CreateFile("COM15", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
 	// Must specify Windows serial port above, i.e. COM6
 
 	if(hSerial==INVALID_HANDLE_VALUE){
@@ -201,7 +262,7 @@ int _tmain ()
 	
 	
 	
-	SetConsoleTitle(_T("- Sancho!!! - Demo: "));
+	SetConsoleTitle(_T("- Sancho!!!! - Demo: "));
 	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	// write the title
@@ -221,7 +282,7 @@ int _tmain ()
 													   MOTIONPLUS_CHANGED);
 reconnect:
 	COORD pos = { 0, 6 };
-	//SetConsoleCursorPosition(console, pos);
+	SetConsoleCursorPosition(console, pos);
 
 	// try to connect the first available wiimote in the system
 	//  (available means 'installed, and currently Bluetooth-connected'):
@@ -242,10 +303,19 @@ reconnect:
 	
 	
 	/////////////// MIDI Variables ///////////////
-	int fingerState;
+	int fingerState; // What we receive from the Arduino
 
 	/////////////// Wiimote Variables ///////////////
-	int quads[2];
+	float positions [2][2];   // First array is left hand, second array is right. First element of array is x, second is y
+	int quads[2]; // First element is left hand, second element is right
+	
+	positions[0][0] = 0.8; // These give our starting points!!!!
+	positions[0][1] = 0.61; // Very important
+	positions[1][0] = 0.53; // Must calibrate these
+	positions[1][1] = 0.63; // Don't forget!!
+	
+	//////////////////////////////////////////////////
+	
 	
 	// display the wiimote state data until 'Home' is pressed:
 	while(!remote.Button.Home()){ // && !GetAsyncKeyState(VK_ESCAPE))
@@ -254,7 +324,7 @@ reconnect:
 			Sleep(1); // // don't hog the CPU if nothing changed
 
 		cursor_pos.Y = 8;
-		//SetConsoleCursorPosition(console, cursor_pos);
+		SetConsoleCursorPosition(console, cursor_pos);
 
 		// did we loose the connection?
 		if(remote.ConnectionLost()){
@@ -318,23 +388,24 @@ reconnect:
 		}
 		BRIGHT_WHITE;
 			
-		determineQuadrant(remote.IR.Dot, quads);
+		determineQuadrant(remote.IR.Dot, quads, positions);
 		
 		//cout << quads[0] << endl;
 		//cout << quads[1] << endl;
+		cout << "Left Hand - X = " << positions[0][0] << "   Y = " << positions[0][1] << endl;
+		cout << "Right Hand - X = " << positions[1][0] << "   Y = " << positions[1][1] << endl;
 			
 			
 		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
-			szBuff[0] = '0';
-			szBuff[1] = '0';
-			cout << "Can't read" << endl;
+			//cout << "Can't read" << endl;
 		}
 
 		//cout << szBuff << endl; // print read data
 
 		fingerState = atoi(szBuff);
 		sendMIDISignal(fingerState, quads[0], midiout, 40);
-		szBuff[0] = '0';
+		
+		szBuff[0] = '0'; // Reset input buffer
 		szBuff[1] = '0';
   	}
 
