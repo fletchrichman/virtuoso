@@ -15,8 +15,42 @@
 #define SLEEP( milliseconds ) Sleep( (DWORD) milliseconds ) 
 
 
+#include <stdlib.h>
+#include <GL/glut.h>
+
 using namespace std;
 
+void keyboard(unsigned char key, int x, int y);
+void display(void);
+
+
+
+void keyboard(unsigned char key, int x, int y)
+{
+  switch (key)
+  {
+    case '\x1B':
+      exit(EXIT_SUCCESS);
+      break;
+  }
+}
+
+
+void display()
+{
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  glColor3f(1.0f, 0.0f, 0.0f);
+
+  glBegin(GL_POLYGON);
+    glVertex2f(-0.5f, -0.5f);
+    glVertex2f( 0.5f, -0.5f);
+    glVertex2f( 0.5f,  0.5f);
+    glVertex2f(-0.5f,  0.5f);
+  glEnd();
+
+  glFlush();
+}
 
 struct PositionHistory { // Basically a circular buffer
 	int size; // Size of circular buffer
@@ -234,9 +268,23 @@ void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout, int offset){
 	}
 }
 
-int _tmain ()
+int _tmain (int argc, char** argv)
 	{
-	system("cls");
+	
+	FreeConsole();
+	AllocConsole();
+	freopen( "CONOUT$", "wb", stdout);
+	//system("cls");
+
+//	glutInit(&argc, argv);
+//	glutCreateWindow("GLUT Test");
+//	  glutKeyboardFunc(&keyboard);
+//	  glutDisplayFunc(&display);
+//	  glutMainLoop();
+
+
+
+
 	
 	
 	

@@ -1,0 +1,2 @@
+g++ -Wall -D__WINDOWS_MM__ -c -o pleasework.o Demo_BT_Integration.cpp  -I"C:\Program Files (x86)\Common Files\MinGW\freeglut\include" 
+g++ -o pleasework.exe pleasework.o wiimote.cpp Rtmidi.cpp -s -L"C:\Program Files (x86)\Common Files\MinGW\freeglut\lib" -lwinmm -lhid -lsetupapi  -lfreeglut -lopengl32 -Wl,--subsystem,windows
