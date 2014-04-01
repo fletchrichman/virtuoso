@@ -10,11 +10,39 @@
 #include "RtMidi.h"
 
 
+
 #define PORT 1
 #define SLEEP( milliseconds ) Sleep( (DWORD) milliseconds ) 
 
 
 using namespace std;
+
+
+struct PositionHistory { // Basically a circular buffer
+	int size; // Size of circular buffer
+	int oldest_point; // Oldest element index of position circular buffer
+	int velo_point; // Element index to compare with newest to get velocity
+	
+	int dis; // How far away newest point to compare point is (for abs velo measurement, i.e. delta t
+	
+	float *positionsX; // Circular buffer of positions (x)
+	float *positionsY; // Circular buffer of positions (y)
+};
+
+PositionHistory* setupPosHistory(int size, int velo_pt){
+	PositionHistory* ret = new PositionHistory;
+	
+	ret->size = size;
+	ret->oldest_point = velo_pt;
+	ret->velo_point = 0;	
+	ret->dis = velo_pt;
+	ret->positionsX = new float[size];
+	ret->positionsY = new float[size];
+
+	return ret;
+}
+	
+
 
 // ------------------------------------------------------------------------------------
 //  state-change callback example (we use polling for everything else):
@@ -54,8 +82,7 @@ void on_state_change (wiimote			  &remote,
 		}
 	}
 // ------------------------------------------------------------------------------------
-void PrintTitle (HANDLE console)
-	{
+void PrintTitle (HANDLE console){
 	BRIGHT_WHITE;
 	_tprintf(_T("\n")); 
 	_tprintf(_T("   Sancho!!!! "));
@@ -215,7 +242,7 @@ int _tmain ()
 	
 	//////////////////SETUP BLUETOOTH//////////
 	
-	HANDLE hSerial = CreateFile("COM15", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
+	HANDLE hSerial = CreateFile("COM31", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
 	// Must specify Windows serial port above, i.e. COM6
 
 	if(hSerial==INVALID_HANDLE_VALUE){
@@ -309,6 +336,9 @@ reconnect:
 	float positions [2][2];   // First array is left hand, second array is right. First element of array is x, second is y
 	int quads[2]; // First element is left hand, second element is right
 	
+	PositionHistory* posHistoryL = setupPosHistory(1000, 30); // Left hand
+	PositionHistory* posHistoryR = setupPosHistory(1000, 30); // Left hand
+	
 	positions[0][0] = 0.8; // These give our starting points!!!!
 	positions[0][1] = 0.61; // Very important
 	positions[1][0] = 0.53; // Must calibrate these
@@ -394,6 +424,22 @@ reconnect:
 		//cout << quads[1] << endl;
 		cout << "Left Hand - X = " << positions[0][0] << "   Y = " << positions[0][1] << endl;
 		cout << "Right Hand - X = " << positions[1][0] << "   Y = " << positions[1][1] << endl;
+		
+		
+			
+		
+		
+		posHistoryL->oldest_point = (posHistoryL->oldest_point + 1) % posHistoryL->size; // Move circular buffer forward
+		posHistoryL->velo_point = (posHistoryL->velo_point + 1) % posHistoryL->size; // Move circular buffer forward
+		
+		posHistoryL->positionsX[posHistoryL->oldest_point] = positions[0][0]; // Update left hand X position
+		posHistoryL->positionsY[posHistoryL->oldest_point] = positions[0][1]; // Update left hand Y position
+		
+		cout << (posHistoryL->positionsX[posHistoryL->oldest_point] - posHistoryL->positionsX[posHistoryL->velo_point])/posHistoryL->dis << endl; // Print left hand x velocity
+
+		cout << posHistoryL->oldest_point << endl; // For debugging
+		
+			
 			
 			
 		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
