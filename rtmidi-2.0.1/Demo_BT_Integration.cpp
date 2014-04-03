@@ -4,53 +4,20 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <string>
+#include <iostream>
+#include <fstream>
+
 #include <windows.h>
 #include <iostream>
 #include <cstdlib>
 #include "RtMidi.h"
 
-
-
 #define PORT 1
 #define SLEEP( milliseconds ) Sleep( (DWORD) milliseconds ) 
 
 
-#include <stdlib.h>
-#include <GL/glut.h>
-
 using namespace std;
-
-void keyboard(unsigned char key, int x, int y);
-void display(void);
-
-
-
-void keyboard(unsigned char key, int x, int y)
-{
-  switch (key)
-  {
-    case '\x1B':
-      exit(EXIT_SUCCESS);
-      break;
-  }
-}
-
-
-void display()
-{
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  glColor3f(1.0f, 0.0f, 0.0f);
-
-  glBegin(GL_POLYGON);
-    glVertex2f(-0.5f, -0.5f);
-    glVertex2f( 0.5f, -0.5f);
-    glVertex2f( 0.5f,  0.5f);
-    glVertex2f(-0.5f,  0.5f);
-  glEnd();
-
-  glFlush();
-}
 
 struct PositionHistory { // Basically a circular buffer
 	int size; // Size of circular buffer
@@ -274,23 +241,18 @@ int _tmain (int argc, char** argv)
 	FreeConsole();
 	AllocConsole();
 	freopen( "CONOUT$", "wb", stdout);
-	//system("cls");
-
-//	glutInit(&argc, argv);
-//	glutCreateWindow("GLUT Test");
-//	  glutKeyboardFunc(&keyboard);
-//	  glutDisplayFunc(&display);
-//	  glutMainLoop();
 
 
-
-
+	///// SETUP FILE WRITE
+	
+	ofstream outfile;
+	outfile.open ("data12.txt");
 	
 	
 	
 	//////////////////SETUP BLUETOOTH//////////
 	
-	HANDLE hSerial = CreateFile("COM31", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
+	HANDLE hSerial = CreateFile("COM6", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
 	// Must specify Windows serial port above, i.e. COM6
 
 	if(hSerial==INVALID_HANDLE_VALUE){
@@ -314,6 +276,14 @@ int _tmain (int argc, char** argv)
 	 cout << "Can't set state" << endl;
 	}
 
+	
+	COMMTIMEOUTS btStatus;
+	GetCommTimeouts(hSerial, &btStatus);
+	btStatus.ReadIntervalTimeout= 10;
+	btStatus.ReadTotalTimeoutMultiplier= 0;
+	btStatus.ReadTotalTimeoutConstant= 10;
+	SetCommTimeouts(hSerial, &btStatus);
+	
 	char szBuff[2 + 1] = {0}; // Not sure about the second 1
 	DWORD dwBytesRead = 0;
 
@@ -326,8 +296,8 @@ int _tmain (int argc, char** argv)
 	// Check available ports.
 	unsigned int nPorts = midiout->getPortCount();
 	if ( nPorts == 0 ) {
-	std::cout << "No ports available!\n";
-	//goto cleanup;
+		std::cout << "No ports available!\n";
+		//goto cleanup;
 	}
 
 	// Open first available port.
@@ -473,8 +443,8 @@ reconnect:
 		cout << "Left Hand - X = " << positions[0][0] << "   Y = " << positions[0][1] << endl;
 		cout << "Right Hand - X = " << positions[1][0] << "   Y = " << positions[1][1] << endl;
 		
-		
-			
+		outfile << positions[0][0] << " " << positions[0][1] << " " << "0" << endl; // write to file
+		outfile << positions[1][0] << " " << positions[1][1] << " " << "1" << endl;
 		
 		
 		posHistoryL->oldest_point = (posHistoryL->oldest_point + 1) % posHistoryL->size; // Move circular buffer forward
@@ -487,14 +457,14 @@ reconnect:
 
 		cout << posHistoryL->oldest_point << endl; // For debugging
 		
-			
+		
 			
 			
 		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
-			//cout << "Can't read" << endl;
+			cout << "Can't read" << endl;
 		}
-
-		//cout << szBuff << endl; // print read data
+		if (szBuff[0] != '0') 
+			cout << szBuff << endl; // print read data
 
 		fingerState = atoi(szBuff);
 		sendMIDISignal(fingerState, quads[0], midiout, 40);
@@ -503,7 +473,7 @@ reconnect:
 		szBuff[1] = '0';
   	}
 
-
+	outfile.close();
 	// disconnect (auto-happens on wiimote destruction anyway, but let's play nice)
 	remote.Disconnect();
 	Beep(1000, 200);
