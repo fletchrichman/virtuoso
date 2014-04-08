@@ -235,6 +235,59 @@ void sendMIDISignal(int fingerState, int quad, RtMidiOut* midiout, int offset){
 	}
 }
 
+
+HANDLE* setupBluetooth(const char* port){
+	//////////////////SETUP BLUETOOTH//////////
+	
+	HANDLE* hSerial = new HANDLE;
+	*hSerial = CreateFile(port, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
+	// Must specify Windows serial port above, i.e. COM6
+
+	if(*hSerial==INVALID_HANDLE_VALUE){
+		if(GetLastError()==ERROR_FILE_NOT_FOUND){
+			cout << "Does not exist!" << endl; //serial port does not exist. Inform user.
+		}
+		cout << "Strange error" << endl;
+	}
+
+	DCB dcbSerialParams = {0};
+	dcbSerialParams.DCBlength=sizeof(dcbSerialParams);
+	if (!GetCommState(*hSerial, &dcbSerialParams)) {
+		cout << "Can't get state" << endl;
+	}
+
+	dcbSerialParams.BaudRate=CBR_9600; // I didn't expect this number but it works
+	dcbSerialParams.ByteSize=8;
+	dcbSerialParams.StopBits=ONESTOPBIT;
+	dcbSerialParams.Parity=NOPARITY;
+	if(!SetCommState(*hSerial, &dcbSerialParams)){
+	 cout << "Can't set state" << endl;
+	}
+
+	
+	COMMTIMEOUTS btStatus;
+	GetCommTimeouts(*hSerial, &btStatus);
+	btStatus.ReadIntervalTimeout= 10;
+	btStatus.ReadTotalTimeoutMultiplier= 0;
+	btStatus.ReadTotalTimeoutConstant= 10;
+	SetCommTimeouts(*hSerial, &btStatus);
+	
+	return hSerial;
+}
+
+void readBluetooth(HANDLE &hSerial, char szBuff[], int* quads, RtMidiOut* midiout, int offset){
+		DWORD dwBytesRead = 0;
+		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
+			cout << "Can't read" << endl;
+		}
+		if (szBuff[0] != '0') 
+			cout << szBuff << endl; // print read data
+
+		sendMIDISignal(atoi(szBuff), quads[0], midiout, offset);
+		
+		szBuff[0] = '0'; // Reset input buffer
+		szBuff[1] = '0';
+}
 int _tmain (int argc, char** argv)
 	{
 	
@@ -248,44 +301,18 @@ int _tmain (int argc, char** argv)
 	ofstream outfile;
 	outfile.open ("data12.txt");
 	
+	//// Setup bluetooth
+	
+	const char* portLeft = "COM3";
+	const char* portRight = "COM6";
 	
 	
-	//////////////////SETUP BLUETOOTH//////////
-	
-	HANDLE hSerial = CreateFile("COM6", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
-	// Must specify Windows serial port above, i.e. COM6
+	HANDLE* hSerialLeft = setupBluetooth(portLeft);
+	HANDLE* hSerialRight = setupBluetooth(portRight);
 
-	if(hSerial==INVALID_HANDLE_VALUE){
-		if(GetLastError()==ERROR_FILE_NOT_FOUND){
-			cout << "Does not exist!" << endl; //serial port does not exist. Inform user.
-		}
-		cout << "Strange error" << endl;
-	}
 
-	DCB dcbSerialParams = {0};
-	dcbSerialParams.DCBlength=sizeof(dcbSerialParams);
-	if (!GetCommState(hSerial, &dcbSerialParams)) {
-		cout << "Can't get state" << endl;
-	}
-
-	dcbSerialParams.BaudRate=CBR_9600; // I didn't expect this number but it works
-	dcbSerialParams.ByteSize=8;
-	dcbSerialParams.StopBits=ONESTOPBIT;
-	dcbSerialParams.Parity=NOPARITY;
-	if(!SetCommState(hSerial, &dcbSerialParams)){
-	 cout << "Can't set state" << endl;
-	}
-
-	
-	COMMTIMEOUTS btStatus;
-	GetCommTimeouts(hSerial, &btStatus);
-	btStatus.ReadIntervalTimeout= 10;
-	btStatus.ReadTotalTimeoutMultiplier= 0;
-	btStatus.ReadTotalTimeoutConstant= 10;
-	SetCommTimeouts(hSerial, &btStatus);
-	
 	char szBuff[2 + 1] = {0}; // Not sure about the second 1
-	DWORD dwBytesRead = 0;
+	
 
 	//////////////////////////////////////////
 	
@@ -346,9 +373,6 @@ reconnect:
 
 	COORD cursor_pos = { 0, 6 };
 	
-	
-	/////////////// MIDI Variables ///////////////
-	int fingerState; // What we receive from the Arduino
 
 	/////////////// Wiimote Variables ///////////////
 	float positions [2][2];   // First array is left hand, second array is right. First element of array is x, second is y
@@ -458,19 +482,11 @@ reconnect:
 		cout << posHistoryL->oldest_point << endl; // For debugging
 		
 		
+		/// Read Bluetooth and send MIDI signals /// 	
 			
-			
-		if(!ReadFile(hSerial, szBuff, 2, &dwBytesRead, NULL)){ 
-			cout << "Can't read" << endl;
-		}
-		if (szBuff[0] != '0') 
-			cout << szBuff << endl; // print read data
-
-		fingerState = atoi(szBuff);
-		sendMIDISignal(fingerState, quads[0], midiout, 40);
-		
-		szBuff[0] = '0'; // Reset input buffer
-		szBuff[1] = '0';
+		readBluetooth(*hSerialRight, szBuff, quads, midiout, 0);
+		readBluetooth(*hSerialLeft, szBuff, quads, midiout, 40);
+	
   	}
 
 	outfile.close();
@@ -485,7 +501,8 @@ reconnect:
 	
 	
 	/////////////////////////////
-	CloseHandle(hSerial);
+	CloseHandle(*hSerialLeft);
+	CloseHandle(*hSerialRight);
 
 	// Clean up
 	//cleanup:
