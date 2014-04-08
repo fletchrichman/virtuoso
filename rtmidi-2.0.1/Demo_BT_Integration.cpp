@@ -86,7 +86,7 @@ void on_state_change (wiimote			  &remote,
 void PrintTitle (HANDLE console){
 	BRIGHT_WHITE;
 	_tprintf(_T("\n")); 
-	_tprintf(_T("   Sancho!!!! "));
+	_tprintf(_T("   Sancho! "));
 	WHITE; _tprintf(		   _T("Super Awesome Demo   "));
 	CYAN; _tprintf(										    _T(" December 13th, 2013\n")
 			 _T("                    v") WIIYOURSELF_VERSION_STR
@@ -291,15 +291,16 @@ void readBluetooth(HANDLE &hSerial, char szBuff[], int* quads, RtMidiOut* midiou
 int _tmain (int argc, char** argv)
 	{
 	
-	FreeConsole();
-	AllocConsole();
-	freopen( "CONOUT$", "wb", stdout);
+	//FreeConsole();
+	//AllocConsole();
+	//freopen( "CONOUT$", "wb", stdout);
 
 
 	///// SETUP FILE WRITE
 	
+	const char* datafile = "data2.txt";
 	ofstream outfile;
-	outfile.open ("data12.txt");
+	outfile.open (datafile);//, std::ofstream::out | std::ofstream::trunc);
 	
 	//// Setup bluetooth
 	
@@ -381,11 +382,12 @@ reconnect:
 	PositionHistory* posHistoryL = setupPosHistory(1000, 30); // Left hand
 	PositionHistory* posHistoryR = setupPosHistory(1000, 30); // Left hand
 	
-	positions[0][0] = 0.8; // These give our starting points!!!!
+	positions[0][0] = 0.53; // These give our starting points!!!!
 	positions[0][1] = 0.61; // Very important
-	positions[1][0] = 0.53; // Must calibrate these
+	positions[1][0] = 0.8; // Must calibrate these
 	positions[1][1] = 0.63; // Don't forget!!
 	
+	int writeTimerCount = 0;
 	//////////////////////////////////////////////////
 	
 	
@@ -466,10 +468,14 @@ reconnect:
 		//cout << quads[1] << endl;
 		cout << "Left Hand - X = " << positions[0][0] << "   Y = " << positions[0][1] << endl;
 		cout << "Right Hand - X = " << positions[1][0] << "   Y = " << positions[1][1] << endl;
-		
-		outfile << positions[0][0] << " " << positions[0][1] << " " << "0" << endl; // write to file
-		outfile << positions[1][0] << " " << positions[1][1] << " " << "1" << endl;
-		
+		if (writeTimerCount == 3){
+			outfile << positions[0][0] << " " << positions[0][1] << " " << "0" << endl; // write to file
+			outfile << positions[1][0] << " " << positions[1][1] << " " << "1" << endl;
+			writeTimerCount = 0;
+		}
+		else {
+			writeTimerCount++;
+		}
 		
 		posHistoryL->oldest_point = (posHistoryL->oldest_point + 1) % posHistoryL->size; // Move circular buffer forward
 		posHistoryL->velo_point = (posHistoryL->velo_point + 1) % posHistoryL->size; // Move circular buffer forward
@@ -490,23 +496,26 @@ reconnect:
   	}
 
 	outfile.close();
+	remove (datafile);
 	// disconnect (auto-happens on wiimote destruction anyway, but let's play nice)
 	remote.Disconnect();
 	Beep(1000, 200);
 
 	BRIGHT_WHITE; // for automatic 'press any key to continue' msg
-	CloseHandle(console);
+
 	
 	
 	
 	
 	/////////////////////////////
-	CloseHandle(*hSerialLeft);
-	CloseHandle(*hSerialRight);
+//	CloseHandle(*hSerialLeft);
+//	CloseHandle(*hSerialRight);
 
 	// Clean up
 	//cleanup:
 	//delete midiout;
+	CloseHandle(console);
+	//system("exit");
 	
 	return 0;
 	}
