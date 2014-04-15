@@ -52,27 +52,10 @@ void on_state_change (wiimote			  &remote,
 					  state_change_flags  changed,
 					  const wiimote_state &new_state)
 	{
-	// we use this callback to set report types etc. to respond to key events
-	//  (like the wiimote connecting or extensions (dis)connecting).
-	
-	// NOTE: don't access the public state from the 'remote' object here, as it will
-	//		  be out-of-date (it's only updated via RefreshState() calls, and these
-	//		  are reserved for the main application so it can be sure the values
-	//		  stay consistent between calls).  Instead query 'new_state' only.
 
 	// the wiimote just connected
 	if(changed & CONNECTED)
 		{
-		// ask the wiimote to report everything (using the 'non-continous updates'
-		//  default mode - updates will be frequent anyway due to the acceleration/IR
-		//  values changing):
-
-		// note1: you don't need to set a report type for Balance Boards - the
-		//		   library does it automatically.
-		
-		// note2: for wiimotes, the report mode that includes the extension data
-		//		   unfortunately only reports the 'BASIC' IR info (ie. no dot sizes),
-		//		   so let's choose the best mode based on the extension status:
 		if(new_state.ExtensionType != wiimote::BALANCE_BOARD)
 			{
 			if(new_state.bExtension)
@@ -86,11 +69,9 @@ void on_state_change (wiimote			  &remote,
 void PrintTitle (HANDLE console){
 	BRIGHT_WHITE;
 	_tprintf(_T("\n")); 
-	_tprintf(_T("   Sancho! "));
-	WHITE; _tprintf(		   _T("Super Awesome Demo   "));
-	CYAN; _tprintf(										    _T(" December 13th, 2013\n")
-			 _T("                    v") WIIYOURSELF_VERSION_STR
-										 _T("\n"));
+	_tprintf(_T("   Team Sancho!    "));
+	WHITE; _tprintf(_T("Gyro Fingers Wiimote to GUI Integration Test - Demo"));
+	CYAN; _tprintf( _T("\n   April 17th, 2014\n"));
 	CYAN;_tprintf(_T(" ______________________________________________________________________\n\n\n"));
 	}
 // ------------------------------------------------------------------------------------
@@ -128,6 +109,34 @@ void midiOff(RtMidiOut* midiout, int note){
 		 
 }
 
+int getQuad( float X, float Y){
+
+	int row = 0;
+	int col = 0;
+
+	if (Y > .5){
+		row = 0;
+	}
+	else if (Y > .3 && Y < .5){
+		row = 1;
+	}
+	else if (Y < .3){
+		row = 2;
+	}
+	
+	if (X > .6){
+		col = 0;
+	}
+	else if (X > .4 && X < .6){
+		col = 1;
+	}
+	else if (X < .4){
+		col = 2;
+	}		
+
+	return 3*row+col; 
+			
+}
 void determineQuadrant(wiimote_state::ir::dot* dots, int* quads, float positions[][2]){
 	int index_Xmax; // Left hand
 	int index_Xmin; // Right hand
@@ -155,22 +164,15 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads, float positions
 				index_Xmax = i;	
 		}				
 	}
-
-	int row = 0;
-	int col = 0;
 	
 	if(index_Xmax == index_Xmin){ // Only saw one dot (or multiple dots at exact same X), only update closest hand
-		if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y)){ // Left hand closer
-			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update left hand
-			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
-			quads[0] = 2*row+col; 
+		if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y)){ // Left hand closer			
+			quads[0] = getQuad(dots[index_Xmax].X, dots[index_Xmax].Y);
 			positions[0][0] = dots[index_Xmax].X;
 			positions[0][1] = dots[index_Xmax].Y;
 		}
 		else{ // Right hand closer
-			row = dots[index_Xmin].Y > 0.5 ? 0 : 1; // Only update right hand
-			col = dots[index_Xmin].X < 0.5 ? 0 : 1;
-			quads[1] = 2*row+col; 
+			quads[1] = getQuad(dots[index_Xmin].X, dots[index_Xmin].Y); 
 			positions[1][0] = dots[index_Xmin].X;
 			positions[1][1] = dots[index_Xmin].Y;
 		}
@@ -179,16 +181,12 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads, float positions
 	
 	if(fabs(dots[index_Xmax].X - dots[index_Xmin].X) + fabs(dots[index_Xmax].Y - dots[index_Xmin].Y) < thresholdD){ // Hands are very close together
 		if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y)){ // Left hand closer to maxX LED than right hand to minX LED
-			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update left hand
-			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
-			quads[0] = 2*row+col; 
+			quads[0] = getQuad(dots[index_Xmax].X, dots[index_Xmax].Y);
 			positions[0][0] = dots[index_Xmax].X;
 			positions[0][1] = dots[index_Xmax].Y;
 		}
 		else{ // Right hand closer to minX LED
-			row = dots[index_Xmax].Y > 0.5 ? 0 : 1; // Only update right hand
-			col = dots[index_Xmax].X < 0.5 ? 0 : 1;
-			quads[1] = 2*row+col; 
+			quads[1] = getQuad(dots[index_Xmax].X, dots[index_Xmax].Y);
 			positions[1][0] = dots[index_Xmin].X;
 			positions[1][1] = dots[index_Xmin].Y;
 		}
@@ -197,17 +195,13 @@ void determineQuadrant(wiimote_state::ir::dot* dots, int* quads, float positions
 	
 	
 	if(fabs(positions[0][0] - dots[index_Xmax].X) + fabs(positions[0][1] - dots[index_Xmax].Y) < thresholdC){ // 1-Norm under a value, this is the correct dot for left hand
-		row = dots[index_Xmax].Y > 0.5 ? 0 : 1;
-		col = dots[index_Xmax].X < 0.5 ? 0 : 1;
-		quads[0] = 2*row+col; 
+		quads[0] = getQuad(dots[index_Xmax].X, dots[index_Xmax].Y);
 		positions[0][0] = dots[index_Xmax].X;
 		positions[0][1] = dots[index_Xmax].Y;
 	}
 	
 	if(fabs(positions[1][0] - dots[index_Xmin].X) + fabs(positions[1][1] - dots[index_Xmin].Y) < thresholdC){ // 1-Norm under a value, this is the correct dot for right hand
-		row = dots[index_Xmin].Y > 0.5 ? 0 : 1;
-		col = dots[index_Xmin].X < 0.5 ? 0 : 1;
-		quads[1] = 2*row+col; 
+		quads[1] = getQuad(dots[index_Xmin].X, dots[index_Xmin].Y); 
 		positions[1][0] = dots[index_Xmin].X;
 		positions[1][1] = dots[index_Xmin].Y;	
 	}	
@@ -298,15 +292,14 @@ int _tmain (int argc, char** argv)
 
 	///// SETUP FILE WRITE
 	
-	const char* datafile = "data2.txt";
+	const char* datafile = "data.txt";
 	ofstream outfile;
 	outfile.open (datafile);//, std::ofstream::out | std::ofstream::trunc);
 	
 	//// Setup bluetooth
 	
-	const char* portLeft = "COM3";
+	const char* portLeft = "COM9";
 	const char* portRight = "COM6";
-	
 	
 	HANDLE* hSerialLeft = setupBluetooth(portLeft);
 	HANDLE* hSerialRight = setupBluetooth(portRight);
@@ -335,7 +328,7 @@ int _tmain (int argc, char** argv)
 	
 	
 	
-	SetConsoleTitle(_T("- Sancho!!!! - Demo: "));
+	SetConsoleTitle(_T("IR LEDs to GUI Integration Test - Demo"));
 	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	// write the title
@@ -382,10 +375,10 @@ reconnect:
 	PositionHistory* posHistoryL = setupPosHistory(1000, 30); // Left hand
 	PositionHistory* posHistoryR = setupPosHistory(1000, 30); // Left hand
 	
-	positions[0][0] = 0.53; // These give our starting points!!!!
-	positions[0][1] = 0.61; // Very important
-	positions[1][0] = 0.8; // Must calibrate these
-	positions[1][1] = 0.63; // Don't forget!!
+	positions[0][0] = 0.67; // These give our starting points!!!!
+	positions[0][1] = 0.5; // Very important
+	positions[1][0] = 0.33; // Must calibrate these
+	positions[1][1] = 0.5; // Don't forget!!
 	
 	int writeTimerCount = 0;
 	//////////////////////////////////////////////////
@@ -464,18 +457,20 @@ reconnect:
 			
 		determineQuadrant(remote.IR.Dot, quads, positions);
 		
-		//cout << quads[0] << endl;
-		//cout << quads[1] << endl;
+	
+		cout << quads[0] << endl;
+		cout << quads[1] << endl;
 		cout << "Left Hand - X = " << positions[0][0] << "   Y = " << positions[0][1] << endl;
 		cout << "Right Hand - X = " << positions[1][0] << "   Y = " << positions[1][1] << endl;
 		if (writeTimerCount == 3){
-			outfile << positions[0][0] << " " << positions[0][1] << " " << "0" << endl; // write to file
-			outfile << positions[1][0] << " " << positions[1][1] << " " << "1" << endl;
+			outfile << positions[0][0] << " " << positions[0][1] << " " << "1" << endl; // write to file
+			outfile << positions[1][0] << " " << positions[1][1] << " " << "0" << endl;
 			writeTimerCount = 0;
 		}
 		else {
 			writeTimerCount++;
 		}
+
 		
 		posHistoryL->oldest_point = (posHistoryL->oldest_point + 1) % posHistoryL->size; // Move circular buffer forward
 		posHistoryL->velo_point = (posHistoryL->velo_point + 1) % posHistoryL->size; // Move circular buffer forward
@@ -489,10 +484,9 @@ reconnect:
 		
 		
 		/// Read Bluetooth and send MIDI signals /// 	
-			
 		readBluetooth(*hSerialRight, szBuff, quads, midiout, 0);
 		readBluetooth(*hSerialLeft, szBuff, quads, midiout, 40);
-	
+		
   	}
 
 	outfile.close();
@@ -508,8 +502,8 @@ reconnect:
 	
 	
 	/////////////////////////////
-//	CloseHandle(*hSerialLeft);
-//	CloseHandle(*hSerialRight);
+	CloseHandle(*hSerialLeft);
+	CloseHandle(*hSerialRight);
 
 	// Clean up
 	//cleanup:
