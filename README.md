@@ -23,10 +23,10 @@ If Wiimote won�t connect, just keep adding and removing it.
 
 If the COM ports in the properties are higher than 9, then you�ve got some hidden ports that are unused. To fix it, follow these steps, and then remove and add the Bluetooth devices again. 
 
-1. Right-click �Command Prompt� in Accessories and choose �Run as Administrator�
-2. Enter �set devmgr_show_nonpresent_devices=1? � without the quotes obviously
-3. Enter �start devmgmt.msc�
-4. In the box that opens, select �Show hidden devices� in the �view� menu.
+1. Right-click Command Prompt in Accessories and choose Run as Administrator
+2. Enter 'set devmgr_show_nonpresent_devices=1?' without the quotes obviously
+3. Enter 'start devmgmt.msc'
+4. In the box that opens, select 'Show hidden devices' in the view menu.
 Now if you expand the section on COM ports, all the COM ports that have ever
 been created will be displayed, the non present ones being in grey. You can
 uninstall away anything that you don�t want (right click, select uninstall).
