@@ -6,7 +6,7 @@ While a user is wearing the gloves, the voltage on each finger needs to be teste
 
 ## Bluetooth Arduino and Wiimote Setup 
 
-Plug in Bluetooth dongles into the Lilypad Arduinos, and turn on the gloves. On the computer, open the �Devices and Printers� window. Right click and select �Add a Device�. You should see two devices whose name begins with RNBT. Select one of the devices, and add the device with pairing code 1234. Repeat for the other device. You should see the computer installing driver software successfully. Next, get the Wiimote out, turn it on, hold down the 1 and 2 buttons, and click add device. Select the Nintendo device, and choose to pair without a code. Computer will connect, configure, and install the driver software for the device.  
+Plug in Bluetooth dongles into the Lilypad Arduinos, and turn on the gloves. On the computer, open the Devices and Printers window. Right click and select Add a Device. You should see two devices whose name begins with RNBT. Select one of the devices, and add the device with pairing code 1234. Repeat for the other device. You should see the computer installing driver software successfully. Next, get the Wiimote out, turn it on, hold down the 1 and 2 buttons, and click add device. Select the Nintendo device, and choose to pair without a code. Computer will connect, configure, and install the driver software for the device.  
 
 
 ## Setting COM Ports and Compiling 
@@ -19,7 +19,7 @@ Install the LoopBe1 free virtual midi driver to create a midi port that the prog
 
 ## Troubleshooting 
 
-If Wiimote won�t connect, just keep adding and removing it. 
+If Wiimote won't connect, just keep adding and removing it. 
 
 If the COM ports in the properties are higher than 9, then you�ve got some hidden ports that are unused. To fix it, follow these steps, and then remove and add the Bluetooth devices again. 
 
